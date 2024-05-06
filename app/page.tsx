@@ -1,46 +1,81 @@
 "use client"
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { databases, account } from "@/appwrite";
+import { databases, account, createUser, listLogs, listIdentities, loginAccount, logoutAccount, getAccount, Models } from "@/appwrite";
+
 
 export default function Home() {
 
+  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
+  const [tweets, setTweets] = useState<Models.DocumentList<Models.Document> | null>(null);
+
   useEffect(() => {
     account.get()
-    .then(res => {
-      console.log(res);
-    })
-    .catch(err => console.log(err));
+      .then(res => {
+        setUser(res);
+      })
+      .catch(err => {
+        console.log(err);
+        setUser(null);
+      });
+    getTweets();
+  }, []);
 
+  const getTweets = () => {
     databases.listDocuments(process.env.NEXT_PUBLIC_DATABASE!, process.env.NEXT_PUBLIC_TWEETS_COLLECTION!)
       .then(res => {
         console.log(res);
+        setTweets(res);
       })
-      .catch(err => console.log(err));
-  }, []);
-
-  const createUser = () => {
-    account.create("kyfoxi", "kyfoxi@pinky.com", "kyfoxi123456")
-      .then(res => {
-        console.log(res);
-      })
-      .catch(err => console.log(err));
+      .catch(err => {
+        console.log(err);
+        setTweets(null);
+      });
   }
 
-  const loginAccount = () => {
-    account.createEmailPasswordSession("kyfoxi@pinky.com", "kyfoxi123456")
-      .then(res => {
-        console.log(res);
-      })
-      .catch(err => console.log(err));
+  const createTweet = () => {
+    databases.createDocument(
+      process.env.NEXT_PUBLIC_DATABASE!,
+      process.env.NEXT_PUBLIC_TWEETS_COLLECTION!,
+      "UniqueID",
+      {
+        text: "Hello, World!"
+      }
+    )
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="space-x-16">
-        <button onClick={createUser}>Create User</button>
-        <button onClick={loginAccount}>Login Account</button>
+      <div className="flex flex-col justify-center items-center">
+        <div>{user ? `User: ${user.name.trim().length > 0 ? user.name : user.email}` : "No User"}</div>
+        <div className="space-x-16">
+          <button onClick={createUser}>Create User</button>
+          <button onClick={listLogs}>List Logs</button>
+          <button onClick={listIdentities}>List Identities</button>
+        </div>
+        <div className="space-x-16">
+          <button onClick={loginAccount}>Login Account</button>
+          <button onClick={logoutAccount}>Logout Account</button>
+          <button onClick={getAccount}>Get Account</button>
+        </div>
+      </div>
+
+      <div>
+        <h2>tweets</h2>
+        {
+          tweets
+            ? tweets.documents.map(tweet =>
+              <div id={tweet.$id}>
+                <h3>{tweet.text}</h3>
+                <p>{tweet.$createdAt}</p>
+              </div>
+            )
+            : <></>
+        }
+        <div className="space-x-16">
+          <button onClick={createTweet}>Create Tweet</button>
+        </div>
       </div>
 
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
